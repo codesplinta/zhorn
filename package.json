@@ -1,0 +1,37 @@
+{
+  "name": "zhorn",
+  "version": "0.1.0",
+  "description": "realtime page bot detection, XSS detection, tampering detection + performance analytics SDK for the web",
+  "main": "src/index.js",
+  "scripts": {
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "perfume.js": "9.0.0-rc.3",
+    "urisanity": "0.1.2",
+    "dompurify": "2.4.7",
+    "trusted-types": "2.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.16.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codesplinta/zhorn.git"
+  },
+  "author": "Ifeora Okechukwu",
+  "contributors": [{
+    "name": "Ifeora Okechukwu",
+    "email": "isocroft@gmail.com",
+    "url": "https://isocroft.com/about"
+  }],
+  "keywords": [
+    "bot-detection",
+    "tampering-detection",
+    "tampering-prevention",
+    "xxs-detection",
+    "xxs-prevention",
+    "instrumentation",
+    "monkey-patching"
+  ]
+}
