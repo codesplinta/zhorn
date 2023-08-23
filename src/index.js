@@ -3,6 +3,7 @@ import URISanity from "urisanity";
 import DOMPurify from "dompurify";
 import Perfume from "perfume.js";
 
+const isSafariBrowser = ("gesturechange" in window);
 /* @HINT: Detect whether the browser executing this script is old IE (Trident rendering engine); IE6 - IE11 */
 const isTrident_IE = (/*@cc_on!@*/false || window.document.uniqueID || window.document.createEventObject) 
   && (window.toStaticHTML || ((document.documentMode >= 9) && ("clientInformation" in window)));
@@ -538,6 +539,55 @@ BotDetector.prototype.monitor = function () {
 		self.update(true);
 	}, self.timeout);
 };
+
+/**!
+ *
+ *
+ *
+ */
+const perfume = new Perfume({
+  resourceTiming: true,
+  elementTiming: true,
+  analyticsTracker: (options) => {
+    const { metricName, data, navigatorInformation } = options;
+    switch (metricName) {
+      case "navigationTiming":
+        if (data && data.timeToFirstByte) {
+          myAnalyticsTool.track("navigationTiming", data);
+        }
+        break;
+      case "networkInformation":
+        if (data && data.effectiveType) {
+          myAnalyticsTool.track("networkInformation", data);
+        }
+        break;
+      case "fp":
+        myAnalyticsTool.track("firstPaint", { duration: data });
+        break;
+      case "fcp":
+        myAnalyticsTool.track("firstContentfulPaint", { duration: data });
+        break;
+      case "fid":
+        myAnalyticsTool.track("firstInputDelay", { duration: data });
+        break;
+      case "lcp":
+        myAnalyticsTool.track("largestContentfulPaint", { duration: data });
+        break;
+      case "cls":
+        myAnalyticsTool.track("cumulativeLayoutShift", { duration: data });
+        break;
+      case "clsFinal":
+        myAnalyticsTool.track("cumulativeLayoutShiftFinal", { duration: data });
+        break;
+      case "tbt":
+        myAnalyticsTool.track("totalBlockingTime", { duration: data });
+        break;
+      default:
+        myAnalyticsTool.track(metricName, { duration: data });
+        break;
+    }
+  },
+});
 
 new BotDetector({
   timeout: 1000,
