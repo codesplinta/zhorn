@@ -1,2 +1,2 @@
 # zhorn
-realtime page performance + XSS analytics SDK for the web
+realtime page bot detection, XSS detection, tampering detection + performance analytics SDK for the web
