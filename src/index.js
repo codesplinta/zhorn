@@ -12,20 +12,20 @@ const isTrident_IE = (/*@cc_on!@*/false || window.document.uniqueID || window.do
 const attrModifiedMutationEventDoesntWork = () => {
   const attrModifiedListenerCalled = false;
 	  
-	const attrModifiedListener = function () {
+  const attrModifiedListener = function () {
     attrModifiedListenerCalled = true;
   };
 
-	window.document.documentElement.addEventListener(
+  window.document.documentElement.addEventListener(
     "DOMAttrModified", attrModifiedListener, false
   );
-	window.document.documentElement.setAttribute("___TEST___", true);
-	window.document.documentElement.removeAttribute("___TEST___", true);
-	window.document.documentElement.removeEventListener(
+  window.document.documentElement.setAttribute("___TEST___", true);
+  window.document.documentElement.removeAttribute("___TEST___", true);
+  window.document.documentElement.removeEventListener(
     "DOMAttrModified", attrModifiedListener, false
   );
 	
-	return attrModifiedListenerCalled === false;
+  return attrModifiedListenerCalled === false;
 };
 
 /* @HINT: Detect whether the browser executing this script has support for `window.navigator.sendBeacon()`*/
@@ -167,19 +167,87 @@ class XSSDetector {
       HTMLAnchorElement.prototype,
       "href"
     );
-
-    /* @HINT: Create a new definition for `setAttribute` that instruments the API to detect suspicious URIs */
-    HTMLElement.prototype.setAttribute = function setAttribute (attributeName, newValue) {
-  	  const self = this;
-  	  const previousValue = self.getAttribute(attributeName);
-  
-  	  let timerID = null;
+    /* @HINT: */
+    const nativeIDAttributeSetter = window.Object.prototype.__lookupSetter__.call(
+      HTMLElement.prototype, "id"
+    );
+    /* @HINT: */
+    const nativeClassNameAttributeSetter = window.Object.prototype.__lookupSetter__.call(
+      HTMLElement.prototype, "className"
+    );
+    /* @HINT: */
+    window.Object.prototype.__defineSetter__.call(HTMLElement.prototype, "id", function setter_ID (newIDValue = "") {
+      const self = this;
+      const previousIDValue = self.id || null;
 
       if (canPatchMutationEvent) {
-        timerID = window.setTimeout(function () { 
+        window.setTimeout(() => { 
+	  /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
+	  nativeIDAttributeSetter.call(self, newIDValue);
+	}, 0);
+    
+        if (newIDValue !== previousIDValue) {
+          const event = window.document.createEvent("MutationEvent");
+          event.initMutationEvent(
+	    "DOMAttrModified",
+	    true,
+	    false,
+	    self,
+	    previousIDValue || "",
+	    newIDValue || "",
+	    "id",
+	    (previousIDValue === null) ? event.ADDITION : event.MODIFICATION
+	  );
+
+	  self.dispatchEvent(event);
+        }
+      } else {
+	nativeIDAttributeSetter.call(self, newIDValue);
+      }
+  });
+
+  window.Object.prototype.__defineSetter__.call(HTMLElement.prototype, "className", function setter_className (newClassNameValue = "") {
+    const self = this;
+    const previousClassNameValue = self.className || null;
+
+    if (canPatchMutationEvent) {
+      window.setTimeout(() => {
+        /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
+        nativeClassNameAttributeSetter.call(self, newClassNameValue);
+      }, 0);
+
+      if (newClassNameValue !== previousClassNameValue) {
+        const event = winow.document.createEvent("MutationEvent");
+        event.initMutationEvent(
+          "DOMAttrModified",
+          true,
+          false,
+          self,
+          previousClassNameValue || "",
+          newClassNameValue || "",
+          "className",
+          (previousClassNameValue === null) ? event.ADDITION : event.MODIFICATION
+        );
+
+        self.dispatchEvent(event);
+      }
+    } else {
+      nativeClassNameAttributeSetter.call(self, newClassNameValue);
+    }
+  });
+
+    /* @HINT: Create a new definition for `setAttribute` that instruments the API to detect suspicious URIs */
+    HTMLElement.prototype.setAttribute = function setAttribute (attributeName, newAttributeValue) {
+      const self = this;
+      const previousAttributeValue = self.getAttribute(attributeName.toLowerCase());
+
+      let timerID = null;
+
+      if (canPatchMutationEvent) {
+        timerID = window.setTimeout(() => { 
           /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
-    		  nativeSetAttributeMethod.call(that, attributeName, newValue);
-    	  }, 0);
+	  nativeSetAttributeMethod.call(self, attributeName.toLowerCase(), newAttributeValue);
+	}, 0);
       }
   
       /* @HINT: Whenever the attribute name is `href`, then check the URL that is the value */
@@ -187,7 +255,7 @@ class XSSDetector {
         /* @HINT: Fire a custom event `beforeinclude` to track manual whitelisting of URL endpoints */
         let event = new window.CustomEvent("beforeinclude", {
           detail: {
-            endpoint: newValue,
+            endpoint: newAttributeValue,
             method: undefined,
             sink: "HTMLElement.setAttribute",
             data: null
@@ -219,7 +287,7 @@ class XSSDetector {
            " [ " + event.detail.sink + " ]"
          )
         } else {
-          if (!DOMPurify.isValidAttribute(self.tagName.toLowerCase(), attributeName, event.detail.endpoint)) {
+          if (!DOMPurify.isValidAttribute(self.tagName.toLowerCase(), attributeName.toLowerCase(), event.detail.endpoint)) {
 
             /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
 
@@ -237,28 +305,29 @@ class XSSDetector {
       }
   
       /* @HINT: When listening to mutation events, might be okay to stagger certain event sequences properly */
-  	  if (canPatchMutationEvent) {
-        if (newValue !== previousValue) {
-    	    let event = document.createEvent("MutationEvent");
+     if (canPatchMutationEvent) {
+        if (newAttributeValue !== previousAttributeValue) {
+    	    let event = window.document.createEvent("MutationEvent");
+
     	    event.initMutationEvent(
     	      "DOMAttrModified",
     	      true,
     	      false,
     	      self,
-    	      previousValue || "",
-    	      newValue || "",
+    	      previousAttributeValue || "",
+    	      newAttributeValue || "",
     	      attributeName,
-    	      (previousValue === null) ? event.ADDITION : event.MODIFICATION
+    	      (previousAttributeValue === null) ? event.ADDITION : event.MODIFICATION
     	    );
     		  
     	    self.dispatchEvent(
-            event
-          );
+	      event
+	    );
         }
-  	  } else {
+      } else {
         nativeSetAttributeMethod.call(self, attributeName, newValue);
       }
-  	};
+    };
 
     /* @HINT: define property `name` on custom function */
     window.Object.defineProperty(setAttribute, "name", {
@@ -273,6 +342,10 @@ class XSSDetector {
         return nativeSetAttributeMethod.toString()
       }
     });
+
+    if (!isSendBeaconAPISupported()) {
+ 	return;
+    }
 
     window.Navigator.prototype.sendBeacon = function sendBeacon (url, data) {
       /* @HINT: Fire a custom event `beforerequest` to track manual whitelisting of URL endpoints */
