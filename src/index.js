@@ -3,8 +3,9 @@ import URISanity from "urisanity";
 import DOMPurify from "dompurify";
 import Perfume from "perfume.js";
 
-const isFirefoxBrowser = ("ondevicelight" in window);
+const isFirefoxBrowser = ("ondevicelight" in window) && ("onbeforescriptexecute" in window.document);
 const isSafariBrowser = ("gesturechange" in window);
+
 /* @HINT: Detect whether the browser executing this script is old IE (Trident rendering engine); IE6 - IE11 */
 const isTrident_IE = (/*@cc_on!@*/false || window.document.uniqueID || window.document.createEventObject) 
   && (window.toStaticHTML || ((document.documentMode >= 9) && ("clientInformation" in window)));
