@@ -3,9 +3,6 @@ import URISanity from "urisanity";
 import DOMPurify from "dompurify";
 import Perfume from "perfume.js";
 
-const isFirefoxBrowser = ("ondevicelight" in window) && ("onbeforescriptexecute" in window.document);
-const isSafariBrowser = ("gesturechange" in window);
-
 /* @HINT: Detect whether the browser executing this script is old IE (Trident rendering engine); IE6 - IE11 */
 const isTrident_IE = (/*@cc_on!@*/false || window.document.uniqueID || window.document.createEventObject) 
   && (window.toStaticHTML || ((document.documentMode >= 9) && ("clientInformation" in window)));
@@ -37,7 +34,7 @@ const isSendBeaconAPISupported = () => {
 
 
 /**!
- * class XSSDetector
+ * @class XSSDetector
  *
  *
  */
@@ -64,10 +61,10 @@ class XSSDetector {
       window.console.error.bind(window.console)
     );
     
-    TT.createPolicy("default", {
+    TT.createPolicy("zhornpuritan", {
       createHTML: (html) => {
         if (!TT.isHTML(html)) {
-          window.console.error(new CustomEvent("untrusted html detected"));
+          window.console.error(new Error("untrusted html detected"));
         }
     
         /* @HINT: 
@@ -150,13 +147,17 @@ class XSSDetector {
       /* @HINT: Or the validation above for any origin + pathname doesn't pass */
       event.preventDefault();
     }
+
+    this.monkeyPatchDOMInterfaces();
+
+    return this;
   }
 
   monkeyPatchDOMInterfaces () {
     const canPatchMutationEvent = (typeof window.MutationObserver !== "function")
       && attrModifiedMutationEventDoesntWork();
 
-    /* @HINT: craete a function/constructor that does nothing a.k.a no-operation function */
+    /* @HINT: create a function/constructor that does nothing a.k.a no-operation function */
     const noop = function noOperation () {}
 
     /* @HINT: Extract the native definitions of these APIs from the DOM Interfaces */
@@ -184,59 +185,59 @@ class XSSDetector {
 
       if (canPatchMutationEvent) {
         window.setTimeout(() => { 
-	  /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
-	  nativeIDAttributeSetter.call(self, newIDValue);
-	}, 0);
+          /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
+          nativeIDAttributeSetter.call(self, newIDValue);
+        }, 0);
     
         if (newIDValue !== previousIDValue) {
           const event = window.document.createEvent("MutationEvent");
-          event.initMutationEvent(
-	    "DOMAttrModified",
-	    true,
-	    false,
-	    self,
-	    previousIDValue || "",
-	    newIDValue || "",
-	    "id",
-	    (previousIDValue === null) ? event.ADDITION : event.MODIFICATION
-	  );
+            event.initMutationEvent(
+            "DOMAttrModified",
+            true,
+            false,
+            self,
+            previousIDValue || "",
+            newIDValue || "",
+            "id",
+            (previousIDValue === null) ? event.ADDITION : event.MODIFICATION
+          );
 
-	  self.dispatchEvent(event);
+	        self.dispatchEvent(event);
         }
       } else {
-	nativeIDAttributeSetter.call(self, newIDValue);
+	      nativeIDAttributeSetter.call(self, newIDValue);
       }
-  });
+    });
 
-  window.Object.prototype.__defineSetter__.call(HTMLElement.prototype, "className", function setter_className (newClassNameValue = "") {
-    const self = this;
-    const previousClassNameValue = self.className || null;
+    window.Object.prototype.__defineSetter__.call(HTMLElement.prototype, "className", function setter_className (newClassNameValue = "") {
+      const self = this;
+      const previousClassNameValue = self.className || null;
 
-    if (canPatchMutationEvent) {
-      window.setTimeout(() => {
-        /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
+      if (canPatchMutationEvent) {
+        window.setTimeout(() => {
+          /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
+          nativeClassNameAttributeSetter.call(self, newClassNameValue);
+        }, 0);
+
+        if (newClassNameValue !== previousClassNameValue) {
+          const event = winow.document.createEvent("MutationEvent");
+          event.initMutationEvent(
+            "DOMAttrModified",
+            true,
+            false,
+            self,
+            previousClassNameValue || "",
+            newClassNameValue || "",
+            "className",
+            (previousClassNameValue === null) ? event.ADDITION : event.MODIFICATION
+          );
+
+          self.dispatchEvent(event);
+        }
+      } else {
         nativeClassNameAttributeSetter.call(self, newClassNameValue);
-      }, 0);
-
-      if (newClassNameValue !== previousClassNameValue) {
-        const event = winow.document.createEvent("MutationEvent");
-        event.initMutationEvent(
-          "DOMAttrModified",
-          true,
-          false,
-          self,
-          previousClassNameValue || "",
-          newClassNameValue || "",
-          "className",
-          (previousClassNameValue === null) ? event.ADDITION : event.MODIFICATION
-        );
-
-        self.dispatchEvent(event);
       }
-    } else {
-      nativeClassNameAttributeSetter.call(self, newClassNameValue);
-    }
-  });
+    });
 
     /* @HINT: Create a new definition for `setAttribute` that instruments the API to detect suspicious URIs */
     HTMLElement.prototype.setAttribute = function setAttribute (attributeName, newAttributeValue) {
@@ -248,8 +249,8 @@ class XSSDetector {
       if (canPatchMutationEvent) {
         timerID = window.setTimeout(() => { 
           /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
-	  nativeSetAttributeMethod.call(self, attributeName.toLowerCase(), newAttributeValue);
-	}, 0);
+	        nativeSetAttributeMethod.call(self, attributeName.toLowerCase(), newAttributeValue);
+	      }, 0);
       }
   
       /* @HINT: Whenever the attribute name is `href`, then check the URL that is the value */
@@ -270,37 +271,40 @@ class XSSDetector {
         /* @HINT: If the event was cancelled, it means the URL endpoint above was disallowed by the checks */
         const eventWasCancelled = !window.document.dispatchEvent(event);
   
-       /* @HINT: If it's cancelled, stop the `setTimeout` call above from being executed by clearing the timeout */
-       /* @HINT: Also, we throw an error to stop the call to `setAttribute` from being requested */
-       if (eventWasCancelled) {
-         if (timerID !== null) {
-           window.clearTimeout(timerID);
-         }
+        /* @HINT: If it's cancelled, stop the `setTimeout` call above from being executed by clearing the timeout */
+        /* @HINT: Also, we throw an error to stop the call to `setAttribute` from being requested */
+        if (eventWasCancelled) {
+          if (timerID !== null) {
+            window.clearTimeout(timerID);
+          }
 
-         /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
+          /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
 
-         throw new Error(
+          throw new Error(
            "Suspicious Activity: "
            +
            event.detail.endpoint
            +
            " included, in "
            +
-           " [ " + event.detail.sink + " ]"
-         )
+            " [ " + event.detail.sink + " ]"
+          )
         } else {
-          if (!DOMPurify.isValidAttribute(self.tagName.toLowerCase(), attributeName.toLowerCase(), event.detail.endpoint)) {
+          if (!DOMPurify.isValidAttribute(
+            self.tagName.toLowerCase(),
+            attributeName.toLowerCase(), event.detail.endpoint)
+          ) {
 
             /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
 
             throw new Error(
-             "Suspicious Activity: "
-             +
-             event.detail.endpoint
-             +
-             " included, in "
-             +
-             " [ " + event.detail.sink + " ]"
+              "Suspicious Activity: "
+              +
+              event.detail.endpoint
+              +
+              " included, in "
+              +
+              " [ " + event.detail.sink + " ]"
            )
           }
         }
@@ -346,7 +350,7 @@ class XSSDetector {
     });
 
     if (!isSendBeaconAPISupported()) {
- 	return;
+ 	    return;
     }
 
     window.Navigator.prototype.sendBeacon = function sendBeacon (url, data) {
@@ -414,7 +418,7 @@ class XSSDetector {
 
 
 /**!
- * class BotDetector
+ * @class BotDetector
  *
  *
  * @see https://github.com/RoBYCoNTe/js-bot-detector/blob/master/bot-detector.js
@@ -599,7 +603,7 @@ BotDetector.prototype.unbindEvent = function (root, type, handle) {
 	}
 };
 
-BotDetector.prototype.monitor = function () {
+BotDetector.prototype.initialize = function () {
 	const self = this;
 
 	for(let testCount in this.tests) {
@@ -608,67 +612,204 @@ BotDetector.prototype.monitor = function () {
 		}
 	}
 
-	this.update(false);
+	this.update();
 
 	window.setTimeout(() => {
 		self.update(true);
 	}, self.timeout);
+
+  return self;
 };
 
 /**!
- *
+ * @class NavigatorMetricsTracker
+ * 
  *
  *
  */
-const perfume = new Perfume({
-  resourceTiming: true,
-  elementTiming: true,
-  analyticsTracker: (options) => {
-    const { metricName, data, navigatorInformation } = options;
-    switch (metricName) {
-      case "navigationTiming":
-        if (data && data.timeToFirstByte) {
-          myAnalyticsTool.track("navigationTiming", data);
+
+class NavigatorMetricsTracker {
+  constructor (maxMeasureTime = 15000, resourceTiming = true, elementTiming = true) {
+    const perfume = new Perfume({
+      resourceTiming,
+      elementTiming,
+      maxMeasureTime,
+      analyticsTracker: (options) => {
+        const { metricName, data /*, navigatorInformation */ } = options;
+        switch (metricName) {
+          case "navigationTiming":
+            if (data && data.timeToFirstByte) {
+              window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+                detail: {
+                  metric: "navigationTiming",
+                  payload: data
+                },
+                bubbles: true,
+                cancelable: true
+              }));
+            }
+            break;
+          case "networkInformation":
+            if (data && data.effectiveType) {
+              window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+                detail: {
+                  metric: "networkInformation",
+                  payload: data
+                },
+                bubbles: true,
+                cancelable: true
+              }));
+            }
+            break;
+          case "fp":
+            window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+              detail: {
+                metric: "firstPaint",
+                payload: { duration: data }
+              },
+              bubbles: true,
+              cancelable: true
+            }));
+            break;
+          case "fcp":
+            window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+              detail: {
+                metric: "firstContentfulPaint",
+                payload: { duration: data }
+              },
+              bubbles: true,
+              cancelable: true
+            }));
+            break;
+          case "fid":
+            window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+              detail: {
+                metric: "firstInputDelay",
+                payload: { duration: data }
+              },
+              bubbles: true,
+              cancelable: true
+            }));
+            break;
+          case "lcp":
+            window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+              detail: {
+                metric: "largestContentfulPaint",
+                payload: { duration: data }
+              },
+              bubbles: true,
+              cancelable: true
+            }));
+            break;
+          case "cls":
+            window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+              detail: {
+                metric: "cumulativeLayoutShift",
+                payload: { duration: data }
+              },
+              bubbles: true,
+              cancelable: true
+            }));
+            break;
+          case "clsFinal":
+            window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+              detail: {
+                metric: "cumulativeLayoutShiftFinal",
+                payload: { duration: data }
+              },
+              bubbles: true,
+              cancelable: true
+            }));
+            break;
+          case "tbt":
+            window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+              detail: {
+                metric: "totalBlockingTime",
+                payload: { duration: data }
+              },
+              bubbles: true,
+              cancelable: true
+            }));
+            break;
+          default:
+            window.dispatchEvent(new CustomEvent("agentmetricavailable", {
+              detail: {
+                metric: metricName,
+                payload: typeof data === "number" ? { duration: data  } : data
+              },
+              bubbles: true,
+              cancelable: true
+            }));
+            break;
         }
-        break;
-      case "networkInformation":
-        if (data && data.effectiveType) {
-          myAnalyticsTool.track("networkInformation", data);
+      },
+    });
+    this.tracker = perfume
+  }
+}
+
+let botDetector = null;
+let xssDetector = null;
+let navigatorMetricsTracker = null;
+
+export const module = {
+  initializeBotDetector: (botCheckTimeout = 1000) => {
+    if (botDetector === null) {
+      botDetector = new BotDetector({
+        timeout: botCheckTimeout,
+        callback: function(result) {
+          if (result.isBot) {
+            window.dispatchEvent(new CustomEvent("botactivity", {
+              detail: {
+                captured: result.allMatched,
+                cases: result.cases
+              },
+              bubbles: true,
+              cancelable: true
+            }));
+          }
         }
-        break;
-      case "fp":
-        myAnalyticsTool.track("firstPaint", { duration: data });
-        break;
-      case "fcp":
-        myAnalyticsTool.track("firstContentfulPaint", { duration: data });
-        break;
-      case "fid":
-        myAnalyticsTool.track("firstInputDelay", { duration: data });
-        break;
-      case "lcp":
-        myAnalyticsTool.track("largestContentfulPaint", { duration: data });
-        break;
-      case "cls":
-        myAnalyticsTool.track("cumulativeLayoutShift", { duration: data });
-        break;
-      case "clsFinal":
-        myAnalyticsTool.track("cumulativeLayoutShiftFinal", { duration: data });
-        break;
-      case "tbt":
-        myAnalyticsTool.track("totalBlockingTime", { duration: data });
-        break;
-      default:
-        myAnalyticsTool.track(metricName, { duration: data });
-        break;
+      }).initialize();
+    }
+    return {
+      getInstance () {
+        throw new Error("instance not publicly accessible")
+      },
+      destroy () {
+        botDetector = null;
+      }
     }
   },
-});
-
-new BotDetector({
-  timeout: 1000,
-  callback: function(result) {
-    if (result.isBot) {
-      window.dispatchEvent(new CustomEvent("botactivity"));
+  initializeXSSDetector: (whitelistedURLs = [], urlsCheckCallback) => {
+    if (xssDetector === null) {
+      xssDetector = new XSSDetector(
+        whitelistedURLs,
+        urlsCheckCallback
+      ).initialize()
+    }
+    return {
+      getInstance () {
+        throw new Error("instance not publicly accessible")
+      },
+      destroy () {
+        xssDetector = null;
+      }
+    }
+  },
+  initializeNavigatorMetricsTracker: (maxMeasureTime, resourceTiming, elementTiming) => {
+    if (navigatorMetricsTracker === null) {
+      navigatorMetricsTracker = new NavigatorMetricsTracker(
+        resourceTiming, elementTiming, maxMeasureTime
+      )
+    }
+    return {
+      getInstance () {
+        return navigatorMetricsTracker.tracker;
+      },
+      destroy () {
+        navigatorMetricsTracker.tracker = null
+        navigatorMetricsTracker = null;
+      }
     }
   }
-}).monitor();
+};
