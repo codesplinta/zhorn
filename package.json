@@ -6,7 +6,11 @@
   "module": "dist/zhorn.es.js",
   "umd": "dist/zhorn.umd.js",
   "scripts": {
-    "lint": "standard --fix"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "standard --fix",
+    "build:rollup": "rollup -c rollup.config.js",
+    "cleanup": "rimraf dist",
+    "build": "npm run cleanup && npm run build:rollup"
   },
   "dependencies": {
     "perfume.js": "9.0.0-rc.3",
@@ -15,6 +19,14 @@
     "trusted-types": "2.0.0"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.14.1",
+    "@rollup/plugin-babel": "^5.3.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@rollup/plugin-strip": "^3.0.4",
+    "@rollup/plugin-terser": "^0.4.4",
+    "coveralls": "^3.1.0",
+    "rollup": "^2.47.0",
     "standard": "^17.1.0"
   },
   "repository": {

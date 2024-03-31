@@ -1,3 +1,5 @@
+[![Generic badge](https://img.shields.io/badge/PrefumeJS-yes-gold.svg)](https://shields.io/) [![Generic badge](https://img.shields.io/badge/URISanity-yes-brown.svg)](https://shields.io/) ![@isocroft](https://img.shields.io/badge/@isocroft-CodeSplinta-blue) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com) [![Made in Nigeria](https://img.shields.io/badge/made%20in-nigeria-008751.svg?style=flat-square)](https://github.com/acekyd/made-in-nigeria)
+
 # zhorn
 realtime page bot detection, XSS detection, tampering detection + performance analytics tracker for the web
 
@@ -78,7 +80,7 @@ const { getInstance, destroy: destroyTracker } =  initializeNavigatorMetricsTrac
 
 const tracker = getInstance();
 
-window.addEventListener('beforeunload', function onUnLoad (event) {
+window.addEventListener('beforeunload', function onBeforeUnLoad (event) {
   /* @HINT: Free up memory */
   destroyBotDetector()
   destroyXSSDetector()
@@ -86,7 +88,7 @@ window.addEventListener('beforeunload', function onUnLoad (event) {
 
   /* @HINT: Preserve the BF Cache */
   /* @CHECK: https://web.dev/articles/bfcache */
-  window.removeEventListener('beforeunload', onUnLoad);
+  window.removeEventListener('beforeunload', onBeforeUnLoad);
 
   event.preventDefault();
   return event.returnValue = 'Are you sure you want to exit?';
@@ -95,4 +97,4 @@ window.addEventListener('beforeunload', function onUnLoad (event) {
 
 ## License
 
-MIT License
+Apache 2.0 License
