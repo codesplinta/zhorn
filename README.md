@@ -21,7 +21,7 @@ realtime page bot detection, XSS detection and performance analytics tracker for
 > Using a `script` tag directly inside a web page
 
 ```html
-<script type="text/javascript" src="https://unpkg.com/browse/zhorn@0.0.1/dist/zhorn.umd.js" crossorigin="anonymous"></script>
+<script type="text/javascript" src="https://unpkg.com/browse/zhorn@0.0.2/dist/zhorn.umd.js" crossorigin="anonymous"></script>
 ```
 
 ### CommonJS
