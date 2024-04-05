@@ -1,4 +1,4 @@
-// Type definitions for zhorn v0.0.1
+// Type definitions for zhorn v0.0.2
 // Project: https://github.com/codesplinta/zhorn
 
 declare global {
