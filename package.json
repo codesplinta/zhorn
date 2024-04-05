@@ -1,10 +1,11 @@
 {
   "name": "zhorn",
   "version": "0.0.1",
-  "description": "realtime page bot detection, XSS detection, tampering detection + performance analytics tracker for the web",
+  "description": "realtime page bot detection, XSS detection and performance analytics tracker for the web",
   "main": "dist/zhorn.js",
   "module": "dist/zhorn.es.js",
   "umd": "dist/zhorn.umd.js",
+  "typings": "./types/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "standard --fix",
@@ -13,10 +14,10 @@
     "build": "npm run cleanup && npm run build:rollup"
   },
   "dependencies": {
+    "dompurify": "^2.4.7",
     "perfume.js": "9.0.0-rc.3",
-    "urisanity": "0.1.3",
-    "dompurify": "2.4.7",
-    "trusted-types": "2.0.0"
+    "trusted-types": "^2.0.0",
+    "urisanity": "^0.1.4"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.14.1",
@@ -29,6 +30,11 @@
     "rollup": "^2.47.0",
     "standard": "^17.1.0"
   },
+  "standard": {
+    "ignore": [
+      "rollup.config.js"
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/codesplinta/zhorn.git"
@@ -39,11 +45,13 @@
   },
   "homepage": "https://github.com/codesplinta/zhorn",
   "author": "Ifeora Okechukwu <isocroft@gmail.com> (https://isocroft.com/)",
-  "contributors": [{
-    "name": "Ifeora Okechukwu",
-    "email": "isocroft@gmail.com",
-    "url": "https://isocroft.com/about"
-  }],
+  "contributors": [
+    {
+      "name": "Ifeora Okechukwu",
+      "email": "isocroft@gmail.com",
+      "url": "https://isocroft.com/about"
+    }
+  ],
   "keywords": [
     "bot-detection",
     "devtool-tampering-detection",

@@ -1,8 +1,10 @@
 <a name="0.0.1"></a>
-# 0.0.1 (2024-03-24)
+# 0.0.1 (2024-04-05)
 
 ### Feature Added
-- 
+- Added function API `initializeBotDetector(...)`
+- Added function API `initializeXSSDetector(...)`
+- Added function API `initializeNavigatorMetricsTracker(...)`
 
 ### Bug Fixes
 - None

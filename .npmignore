@@ -1,0 +1,14 @@
+node_modules
+coverage
+.github
+babel.config.json
+rollup.config.js
+package-lock.json
+yarn.lock
+examples
+src
+tests
+*.jpg
+*.jpeg
+*.gif
+*.png
