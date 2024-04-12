@@ -72,8 +72,11 @@ const { destroy: destroyXSSDetector } = initializeXSSDetector(
     "https://tidio-images-messenger.s3.amazonaws.com",
     "https://fonts.gstatic.com",
     "https://gatedapi.mysaasapp.com",
+    "https://apis.google-analytics.com"
   ],
   (URISanity, payload) => {
+    const { origin } = new URL(payload.endpoint);
+
     /* @HINT: Check that only the request params we need are attached */
     /* @HINT: Any other extra params should not be allowed */
     if (origin.includes('.google-analytics.')) {
@@ -84,7 +87,7 @@ const { destroy: destroyXSSDetector } = initializeXSSDetector(
       )) {
         return;
       }
-      throw new Error("")
+      throw new Error("URL query string not valid")
     }
   }
 );
