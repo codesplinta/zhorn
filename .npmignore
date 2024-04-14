@@ -2,6 +2,7 @@ node_modules
 coverage
 .github
 babel.config.json
+README.md
 rollup.config.js
 package-lock.json
 yarn.lock

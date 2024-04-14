@@ -166,18 +166,22 @@ class XSSDetector {
     /* @HINT: Extract the native definitions of these APIs from the DOM Interfaces */
     const nativeSetAttributeMethod = window.HTMLElement.prototype.setAttribute || noop
     const nativeRemoveAttributeMethod = window.HTMLElement.prototype.removeAttribute || noop
-    /* @HINT: Copy out the user-agent interface function `sendBeacon` */
+    /* @HINT: Copy out the user-agent interface function on Navigator `sendBeacon` */
     const nativeSendBeaconFunction = window.Navigator.prototype.sendBeacon || noop
     /* @HINT: Copy out the user-agent interface function on XMLHttpRequest `open` */
     const nativeXHROpenFunction = window.XMLHttpRequest.prototype.open || noop
+    /* @HINT: Copy out the user-agent interface function on XMLHttpRequest `send` */
+    const nativeXHRSendFunction = window.XMLHttpRequest.prototype.send || noop
+    /* @HINT: Copy out the user-agent interface function `fetch`  */
+    const nativeFetchFunction = window.fetch || noop
     /* @HINT: Copy out the `Image` constructor for creating image DOM elements */
     const NativeImage = window.Image || noop
 
     /* @HINT: Extract setter for `href` property for `<a>` elements */
-    // const nativeHrefAttributePropertySetter = window.Object.prototype.__lookupSetter__.call(
-    //   HTMLAnchorElement.prototype,
-    //   "href"
-    // );
+    const nativeHrefAttributePropertySetter = window.Object.prototype.__lookupSetter__.call(
+      window.HTMLAnchorElement.prototype,
+      'href'
+    )
     /* @HINT: Extract setter for `id` property for any element */
     const nativeIDAttributeSetter = window.Object.prototype.__lookupSetter__.call(
       window.HTMLElement.prototype, 'id'
@@ -186,10 +190,40 @@ class XSSDetector {
     const nativeClassNameAttributeSetter = window.Object.prototype.__lookupSetter__.call(
       window.HTMLElement.prototype, 'className'
     )
-    /* @HINT: Monkey patch setter for `id` property for any element */
-    window.Object.prototype.__defineSetter__.call(window.HTMLElement.prototype, 'id', function setter_ID (newIDValue = '') {
+    /* @HINT: Monkey patch setter for `href` property for `HTMLAnchorElement` element */
+    window.Object.prototype.__defineSetter__.call(window.HTMLAnchorElement.prototype, 'href', function setter_Href (newHrefValue) {
       const self = this
-      const previousIDValue = self.id || null
+      const previousHrefValue = self.href || ''
+
+      if (canPatchMutationEvent) {
+        window.setTimeout(() => {
+          /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
+          nativeHrefAttributePropertySetter.call(self, newHrefValue)
+        }, 0)
+
+        if (newHrefValue !== previousHrefValue) {
+          const event = window.document.createEvent('MutationEvent')
+          event.initMutationEvent(
+            'DOMAttrModified',
+            true,
+            false,
+            self,
+            previousHrefValue || '',
+            newHrefValue || '',
+            'href',
+            (previousHrefValue === '') ? event.ADDITION : event.MODIFICATION
+          )
+
+	        self.dispatchEvent(event)
+        }
+      } else {
+        nativeHrefAttributePropertySetter.call(self, newHrefValue)
+      }
+    })
+    /* @HINT: Monkey patch setter for `id` property for any element */
+    window.Object.prototype.__defineSetter__.call(window.HTMLElement.prototype, 'id', function setter_ID (newIDValue) {
+      const self = this
+      const previousIDValue = self.id || ''
 
       if (canPatchMutationEvent) {
         window.setTimeout(() => {
@@ -207,7 +241,7 @@ class XSSDetector {
             previousIDValue || '',
             newIDValue || '',
             'id',
-            (previousIDValue === null) ? event.ADDITION : event.MODIFICATION
+            (previousIDValue === '') ? event.ADDITION : event.MODIFICATION
           )
 
 	        self.dispatchEvent(event)
@@ -299,7 +333,7 @@ class XSSDetector {
         const event = new window.CustomEvent('beforeinclude', {
           detail: {
             endpoint: newAttributeValue,
-            method: undefined,
+            method: 'GET',
             sink: 'HTMLElement.setAttribute',
             data: null
           },
@@ -359,7 +393,7 @@ class XSSDetector {
     	      previousAttributeValue || '',
     	      newAttributeValue || '',
     	      attributeName,
-    	      (previousAttributeValue === null) ? event.ADDITION : event.MODIFICATION
+    	      (!previousAttributeValue) ? event.ADDITION : event.MODIFICATION
     	    )
 
     	    self.dispatchEvent(
@@ -402,7 +436,7 @@ class XSSDetector {
 
         /* @HINT: Detect if the dispatched custom event was cancelled by a call to `event.preventDefault()` */
         /* @HINT: If the event was cancelled, it means the URL endpoint above was disallowed by the checks */
-        const eventWasCancelled = !document.dispatchEvent(event)
+        const eventWasCancelled = !window.document.dispatchEvent(event)
 
         /* @HINT: If it's cancelled, we throw an error to stop the call to `sendBeacon` from being requested */
         if (eventWasCancelled) {
@@ -448,32 +482,7 @@ class XSSDetector {
     /* @NOTE: Monkey-patching the `new XMLHttpRequest() .open()` method */
     /* @CHECK: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/open */
     window.XMLHttpRequest.prototype.open = function open (method, url, async, user, password) {
-      /* @HINT: Fire a custom event `beforerequest` to track manual whitelisting of URL endpoints */
-      const event = new window.CustomEvent('beforerequest', {
-        detail: {
-          endpoint: url,
-          method: method.toUpperCase(),
-          sink: 'XMLHttpRequest.open',
-          data: null
-        },
-        bubbles: true,
-        cancelable: true
-      })
-
-      /* @HINT: Detect if the dispatched custom event was cancelled by a call to `event.preventDefault()` */
-      /* @HINT: If the event was cancelled, it means the URL endpoint above was disallowed by the checks */
-      const eventWasCancelled = !document.dispatchEvent(event)
-
-      /* @HINT: If it's cancelled, we throw an error to stop the call to `sendBeacon` from being requested */
-      if (eventWasCancelled) {
-        /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
-        throw new Error(
-          'Suspicious Activity: ' +
-          event.detail.endpoint +
-          ' requested, using [ ' + event.detail.data + ' ] in ' +
-            ' [ ' + event.detail.sink + ' ] via HTTP ' + event.detail.method
-        )
-      }
+      this.___$sinkPayload = [method, url]
 
       return nativeXHROpenFunction.call(this, method, url, async, user, password)
     }
@@ -492,6 +501,125 @@ class XSSDetector {
       }
     })
 
+    window.XMLHttpRequest.prototype.send = function send (data = null) {
+      const origin = `${window.location.origin}/`
+      const [method, url] = this.___$sinkPayload
+
+      /* @HINT: Fire a custom event `beforerequest` to track manual whitelisting of URL endpoints */
+      const event = new window.CustomEvent('beforerequest', {
+        detail: {
+          endpoint: url.indexOf('http') !== 0 && url.indexOf('data') !== 0 ? origin + url : url,
+          method: method.toUpperCase(),
+          sink: 'XMLHttpRequest.send',
+          data
+        },
+        bubbles: true,
+        cancelable: true
+      })
+
+      this.___$sinkPayload = undefined
+
+      /* @HINT: Detect if the dispatched custom event was cancelled by a call to `event.preventDefault()` */
+      /* @HINT: If the event was cancelled, it means the URL endpoint above was disallowed by the checks */
+      const eventWasCancelled = !window.document.dispatchEvent(event)
+
+      /* @HINT: If it's cancelled, we throw an error to stop the call to `sendBeacon` from being requested */
+      if (eventWasCancelled) {
+        /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
+        throw new Error(
+          'Suspicious Activity: ' +
+          event.detail.endpoint +
+          ' requested, using [ ' + event.detail.data + ' ] in ' +
+            ' [ ' + event.detail.sink + ' ] via HTTP ' + event.detail.method
+        )
+      }
+
+      return nativeXHRSendFunction.call(this, data)
+    }
+
+    /* @HINT: define property `name` on custom function */
+    window.Object.defineProperty(window.XMLHttpRequest.prototype.send, 'name', {
+      writable: false,
+      value: 'send'
+    })
+
+    /* @HINT: define property function `toString` on custom function */
+    window.Object.defineProperty(window.XMLHttpRequest.prototype.send, 'toString', {
+      writable: true,
+      value: function toString () {
+        return nativeXHRSendFunction.toString()
+      }
+    })
+
+    window.fetch = function fetch (input, init) {
+      const origin = `${window.location.origin}/`
+
+      let url = ''
+      let method = ''
+      let data = null
+
+      if (init) {
+        if ('body' in init) {
+          data = init.body
+        }
+
+        if ('method' in init) {
+          method = init.method
+        }
+      }
+
+      if (typeof input === 'string') {
+        url = input
+      } else if (input instanceof URL) {
+        url = input.toString()
+      } else {
+        if ('url' in input) {
+          url = input.url
+        }
+
+        if ('method' in input) {
+          method = input.method
+        }
+      }
+
+      /* @HINT: Fire a custom event `beforerequest` to track manual whitelisting of URL endpoints */
+      const event = new window.CustomEvent('beforerequest', {
+        detail: {
+          endpoint: url.indexOf('http') !== 0 && url.indexOf('data') !== 0 ? origin + url : url,
+          method: method.toUpperCase(),
+          sink: 'fetch',
+          data
+        },
+        bubbles: true,
+        cancelable: true
+      })
+
+      /* @HINT: Detect if the dispatched custom event was cancelled by a call to `event.preventDefault()` */
+      /* @HINT: If the event was cancelled, it means the URL endpoint above was disallowed by the checks */
+      const eventWasCancelled = !window.document.dispatchEvent(event)
+
+      /* @HINT: If it's cancelled, we throw an error to stop the call to `sendBeacon` from being requested */
+      if (eventWasCancelled) {
+        /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
+        throw new Error(
+          'Suspicious Activity: ' +
+          event.detail.endpoint +
+          ' requested, using [ ' + event.detail.data + ' ] in ' +
+            ' [ ' + event.detail.sink + ' ] via HTTP ' + event.detail.method
+        )
+      }
+
+      return nativeFetchFunction.call(window, input, init)
+    }
+
+    /* @HINT: define property function `toString` on custom function */
+    window.Object.defineProperty(fetch, 'toString', {
+      writable: true,
+      value: function toString () {
+        return nativeFetchFunction.toString()
+      }
+    })
+
     /* @NOTE: Monkey-patching the `new Image()` constructor */
     const createImage = function () {
       /* @HINT: Create a new instance of an image DOM element as a baseline */
@@ -507,7 +635,7 @@ class XSSDetector {
           /* @HINT: Fire a custom event to track manual whitelisting of URL endpoints */
           const event = new window.CustomEvent('beforerequest', {
             detail: {
-              endpoint: url.indexOf('http') === -1 ? origin + url : url,
+              endpoint: url.indexOf('http') !== 0 && url.indexOf('data') !== 0 ? origin + url : url,
               method: 'GET',
               sink: 'HTMLImageElement.src',
               data: null

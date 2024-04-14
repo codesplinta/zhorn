@@ -127,3 +127,18 @@ Apache 2.0 License
 - Safari 12.0+
 - Opera 28.0+
 - Samsung Internet 4.0+
+
+## Contributing
+
+If you wish to contribute to this project, you are very much welcome. Please, create an issue first before you proceed to create a PR (either to propose a feature or fix a bug). Make sure to clone the repo, checkout to a contribution branch and build the project before making modifications to the codebase.
+
+Run all the following command (in order they appear) below:
+
+```bash
+
+$ npm run lint
+
+$ npm run build
+
+$ npm run test
+```

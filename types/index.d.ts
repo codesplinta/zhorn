@@ -24,7 +24,7 @@ declare const agentBeforeRequestDetails: {
     /**
 	 The DOM sink or Browser API that initiated the async request.
 	*/
-    sink: "XMLHttpRequest.open" | "HTMLImageElement.src" | "Navigator.sendBeacon",
+    sink: "XMLHttpRequest.send" | "HTMLImageElement.src" | "Navigator.sendBeacon" | "fetch",
     /**
      The request payload
      */
@@ -36,6 +36,10 @@ declare const agentBeforeIncludeDetails: {
 	 The markup snippet to be included.
 	*/
     endpoint: string,
+    /**
+	 The HTTP method name for the async request.
+	*/
+    method: "GET",
     /**
 	 The DOM sink or Browser API that initiated the markup include.
 	*/
