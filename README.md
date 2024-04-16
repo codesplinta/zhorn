@@ -21,7 +21,7 @@ realtime page bot detection, XSS detection and performance analytics tracker for
 > Using a `script` tag directly inside a web page
 
 ```html
-<script type="text/javascript" src="https://unpkg.com/browse/zhorn@0.0.2/dist/zhorn.umd.js" crossorigin="anonymous"></script>
+<script type="text/javascript" src="https://unpkg.com/browse/zhorn@0.0.3/dist/zhorn.umd.js" crossorigin="anonymous"></script>
 ```
 
 ### CommonJS
@@ -31,7 +31,7 @@ const { initializeBotDetector } = require('zhorn')
 ```
 
 ## Getting Started
-You nee to add the `<meta>` tag (as specified below) to enable **Trusted Types** from the frontend or enable from the backend using [CSP Response Headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP).
+You need to add the `<meta>` tag (as specified below) to enable **Trusted Types** from the frontend or enable from the backend using [CSP Response Headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP).
 
 ```html
 <!-- CSP Whitelist ONLY -->

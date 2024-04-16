@@ -1,6 +1,6 @@
 {
   "name": "zhorn",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "realtime page bot detection, XSS detection and performance analytics tracker for the web",
   "main": "dist/zhorn.js",
   "module": "dist/zhorn.es.js",
