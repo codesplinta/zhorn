@@ -114,6 +114,75 @@ window.addEventListener('beforeunload', function onBeforeUnLoad (event) {
 });
 ```
 
+Or you could create a ReactJS hook: **useZhornTracker()**
+
+```javascript
+import { useState, useMemo } from "react";
+import { useBeforePageUnload } from "react-busser";
+import {
+  initializeBotDetector,
+  initializeXSSDetector,
+  initializeNavigatorMetricsTracker
+} from "zhorn";
+
+export const useZhornTracker = () => {
+   const [{ destroy: destroyBotDetector }] = useState(() => initializeBotDetector(
+     1500 /* :botCheckTimeout: */
+   ));
+   const [{ getInstance, destroy: destroyTracker }] = useState(() => initializeNavigatorMetricsTracker(
+     10000 /* :maxMeasureTime: */
+   ));
+   const [{ destroy: destroyXSSDetector }] = useState(() => initializeXSSDetector(
+     /* @HINT: You need to extract the whilelisted URLs from CSP white list */
+     /* @HINT: The CSP whitelist from the `<meta>` tag or the CSP Response Headers */
+     [
+       "https://code.tidio.co",
+       "http://code.tidio.co",
+       "https://widget-v4.tidiochat.com",
+       "https://fonts.googleapis.com",
+       "https://maxst.icons8.com",
+       "https://cdnjs.cloudflare.com",
+       "https://tidio-images-messenger.s3.amazonaws.com",
+       "https://fonts.gstatic.com",
+       "https://gatedapi.mysaasapp.com",
+       "https://apis.google-analytics.com"
+     ],
+     (URISanity, payload) => {
+       const { origin } = new URL(payload.endpoint);
+   
+       /* @HINT: Check that only the request params we need are attached */
+       /* @HINT: Any other extra params should not be allowed */
+       if (origin.includes('.google-analytics.')) {
+         if (URISanity.checkParamsOverWhiteList(
+           payload.endpoint,
+           ['tid', 'cid'],
+           payload.data
+         )) {
+           return;
+         }
+         throw new Error("URL query string not valid")
+       }
+     }
+   ));
+
+   useBeforePageUnload(() => {
+      const isClosed = window.closed;
+
+      setTimeout(() => {
+        if (isClosed || !window || window.closed) {
+          destroyBotDetector();
+          destroyTracker();
+          destroyXSSDetector();
+        }
+      }, 0);
+
+      return undefined;
+   }, { when: true });
+
+   return useMemo(() => getInstance(), []);
+};
+```
+
 ## License
 
 Apache 2.0 License
