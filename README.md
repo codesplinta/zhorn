@@ -125,28 +125,17 @@ import {
   initializeNavigatorMetricsTracker
 } from "zhorn";
 
-export const useZhornTracker = () => {
+export const useZhornTracker = (botCheckTimeout = 1500, maxMetricsMeasureTime = 10000, cspWhiteList = []) => {
    const [{ destroy: destroyBotDetector }] = useState(() => initializeBotDetector(
-     1500 /* :botCheckTimeout: */
+     botCheckTimeout /* :botCheckTimeout: */
    ));
    const [{ getInstance, destroy: destroyTracker }] = useState(() => initializeNavigatorMetricsTracker(
-     10000 /* :maxMeasureTime: */
+     maxMetricsMeasureTime /* :maxMeasureTime: */
    ));
    const [{ destroy: destroyXSSDetector }] = useState(() => initializeXSSDetector(
      /* @HINT: You need to extract the whilelisted URLs from CSP white list */
      /* @HINT: The CSP whitelist from the `<meta>` tag or the CSP Response Headers */
-     [
-       "https://code.tidio.co",
-       "http://code.tidio.co",
-       "https://widget-v4.tidiochat.com",
-       "https://fonts.googleapis.com",
-       "https://maxst.icons8.com",
-       "https://cdnjs.cloudflare.com",
-       "https://tidio-images-messenger.s3.amazonaws.com",
-       "https://fonts.gstatic.com",
-       "https://gatedapi.mysaasapp.com",
-       "https://apis.google-analytics.com"
-     ],
+     cspWhiteList,
      (URISanity, payload) => {
        const { origin } = new URL(payload.endpoint);
    
