@@ -34,16 +34,16 @@ const { initializeBotDetector } = require('zhorn')
 You need to add the `<meta>` tag (as specified below) to enable **Trusted Types** from the frontend or enable from the backend using [CSP Response Headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP).
 
 ```html
-<!-- CSP Whitelist ONLY -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src https://code.tidio.co http://code.tidio.co https://widget-v4.tidiochat.com 'self' 'sha256-BvzNrSckoP+jHUq6lGFL71O00yDzkfzBQFCqOQH3Tuo=' 'strict-dynamic'; style-src 'self' https://fonts.googleapis.com https://maxst.icons8.com; img-src 'self' https://cdnjs.cloudflare.com https://tidio-images-messenger.s3.amazonaws.com data:; media-src https://widget-v4.tidiochat.com; font-src 'self' https://widget-v4.tidiochat.com https://fonts.gstatic.com https://maxst.icons8.com; connect-src 'self' https://gatedapi.mysaasapp.com; worker-src 'self';" />
+<!-- CSP Whitelist ONLY (Trusted Types will NOT be activated) -->
+<meta http-equiv="Content-Security-Policy" content="base-uri 'none'; default-src 'self' blob:; script-src https://code.tidio.co http://code.tidio.co https://widget-v4.tidiochat.com 'self' 'sha256-BvzNrSckoP+jHUq6lGFL71O00yDzkfzBQFCqOQH3Tuo=' 'strict-dynamic'; style-src 'self' https://fonts.googleapis.com https://maxst.icons8.com; img-src 'self' https://cdnjs.cloudflare.com https://tidio-images-messenger.s3.amazonaws.com data:; media-src https://widget-v4.tidiochat.com; font-src 'self' https://widget-v4.tidiochat.com https://fonts.gstatic.com https://maxst.icons8.com; connect-src 'self' https://gatedapi.mysaasapp.com; worker-src 'self'; upgrade-insecure-requests" />
 
-<!-- OR: CSP Trusted Types Config ONLY -->
+<!-- OR: CSP Trusted Types Config ONLY (Only Trusted Types will be activated) -->
 
 <meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script'; trusted-types dompurify zhornpuritan">
 
 <!-- OR: Both -->
 
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src https://code.tidio.co http://code.tidio.co https://widget-v4.tidiochat.com 'self' 'sha256-BvzNrSckoP+jHUq6lGFL71O00yDzkfzBQFCqOQH3Tuo=' 'strict-dynamic'; style-src 'self' https://fonts.googleapis.com https://maxst.icons8.com; img-src 'self' https://cdnjs.cloudflare.com https://tidio-images-messenger.s3.amazonaws.com data:; media-src https://widget-v4.tidiochat.com; font-src 'self' https://widget-v4.tidiochat.com https://fonts.gstatic.com https://maxst.icons8.com; connect-src 'self' https://gatedapi.mysaasapp.com; worker-src 'self'; require-trusted-types-for 'script'; trusted-types dompurify zhornpuritan" />
+<meta http-equiv="Content-Security-Policy" content="base-uri 'none'; default-src 'self' blob:; script-src https://code.tidio.co http://code.tidio.co https://widget-v4.tidiochat.com 'self' 'sha256-BvzNrSckoP+jHUq6lGFL71O00yDzkfzBQFCqOQH3Tuo=' 'strict-dynamic'; style-src 'self' https://fonts.googleapis.com https://maxst.icons8.com; img-src 'self' https://cdnjs.cloudflare.com https://tidio-images-messenger.s3.amazonaws.com data:; media-src https://widget-v4.tidiochat.com; font-src 'self' https://widget-v4.tidiochat.com https://fonts.gstatic.com https://maxst.icons8.com; connect-src 'self' https://gatedapi.mysaasapp.com; worker-src 'self'; upgrade-insecure-requests; require-trusted-types-for 'script'; trusted-types dompurify zhornpuritan" />
 ```
 
 Afterwards, you can import the project and begin the further setup
@@ -107,10 +107,6 @@ window.addEventListener('beforeunload', function onBeforeUnLoad (event) {
   /* @HINT: Preserve the BF Cache */
   /* @CHECK: https://web.dev/articles/bfcache */
   window.removeEventListener('beforeunload', onBeforeUnLoad);
-
-  event.preventDefault();
-  event.returnValue = undefined;
-  return;
 });
 ```
 
@@ -136,6 +132,7 @@ export const useZhornTracker = (botCheckTimeout = 1500, maxMetricsMeasureTime = 
      /* @HINT: You need to extract the whilelisted URLs from CSP white list */
      /* @HINT: The CSP whitelist from the `<meta>` tag or the CSP Response Headers */
      cspWhiteList,
+     ['quiet-button', 'youtube-vimeo-embed'], // custom element tag names (via web components)
      (URISanity, payload) => {
        const { origin } = new URL(payload.endpoint);
    

@@ -1,8 +1,11 @@
-<a name="0.0.3"></a>
-# 0.0.3 (2022-04-30)
+<a name="0.1.0"></a>
+# 0.1.0 (2026-05-30)
 
 ### Feature Added
-- None
+- Upgraded **dompurify** to v2.5.9
+- Upgraded **urisanity** to v0.1.6
+- Added breaking to change to function signature for `initializeXSSDetector(...)`
+- Added check for `cid:` protocol
 
 ### Bug Fixes
 - None

@@ -1,6 +1,6 @@
 {
   "name": "zhorn",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "realtime page bot detection, XSS detection and performance analytics tracker for the web",
   "main": "dist/zhorn.js",
   "module": "dist/zhorn.es.js",
@@ -14,10 +14,10 @@
     "build": "npm run cleanup && npm run build:rollup"
   },
   "dependencies": {
-    "dompurify": "^2.4.7",
+    "dompurify": "2.5.9",
     "perfume.js": "9.0.0-rc.3",
-    "trusted-types": "^2.0.0",
-    "urisanity": "0.1.5"
+    "trusted-types": "2.0.0",
+    "urisanity": "0.1.6"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.14.1",

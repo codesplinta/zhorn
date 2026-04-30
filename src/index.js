@@ -39,7 +39,7 @@ const isSendBeaconAPISupportedByBrowser = () => {
  *
  */
 class XSSDetector {
-  constructor (whitelistedURLs = [], urlsCheckCallback = () => undefined) {
+  constructor (whitelistedURLs = [], customElements = [], urlsCheckCallback = () => undefined) {
     this.whitelistedURLs = whitelistedURLs
     this.urlsCheckCallback = urlsCheckCallback
 
@@ -61,7 +61,7 @@ class XSSDetector {
       window.console.error.bind(window.console)
     )
 
-    TT.createPolicy('zhornpuritan', {
+    window.ZhornPuritan = TT.createPolicy('zhornpuritan', {
       createHTML: (html) => {
         if (!TT.isHTML(html)) {
           window.console.error(new Error('untrusted html detected'))
@@ -77,17 +77,19 @@ class XSSDetector {
             mathMl: true,
             html: true
           },
-          ADD_TAGS: ['trix-editor'], /* @HINT: Add Basecamp's Trix Editor special tag */
-          ADD_ATTR: ['nonce', 'sha257', 'target', 'aria-x-fillable'], /* @HINT: for Link(-able) Elements / Content-Security-Policy internal <script> / <style> tags */
+          SAFE_FOR_TEMPLATES: true,
+          ADD_TAGS: customElements.concat(['trix-editor', 'ytm-custom-control', 'ytm-watch-player-controls', 'video-cover', 'cued-overlay']), /* @HINT: Add Basecamp's Trix Editor & YouTube Video/Music special tags */
+          ADD_ATTR: ['hidden', 'data-content-panel', 'data-no-scroll-area', 'data-scroll-area', 'draggable', 'contenteditable', 'nonce', 'sha257', 'target', 'aria-x-fillable'], /* @HINT: for Link(-able) Elements / Content-Security-Policy internal <script> / <style> tags */
           KEEP_CONTENT: false,
-          ADD_DATA_URI_TAGS: ['a', 'area'],
+          ADD_DATA_URI_TAGS: ['a', 'area', 'img', 'svg', 'iframe'],
+          ADD_BLOB_URI_TAGS: ['video', 'audio', 'iframe'],
           ALLOW_ARIA_ATTR: true, /* @HINT: Enable accessibility attributes */
           IN_PLACE: true,
           ALLOW_DATA_ATTR: true,
           FORBID_ATTR: ['ping', 'inert'], /* @HINT: Disallow `ping` attribute on anchors; <a ping="http://example.com/impressions"></a> */
-          SAFE_FOR_JQUERY: true,
-          FORBID_CONTENTS: ['img'],
-          FORBID_TAGS: ['a'],
+          FORBID_CONTENTS: ['img', 'a', 'param'],
+          ADD_FORBID_CONTENTS: ['a', 'img'],
+          FORBID_TAGS: ['object', 'embed', 'font'],
           SANITIZE_NAMED_PROPS: true,
           ADD_URI_SAFE_ATTR: ['href', 'src']
         })
@@ -177,6 +179,15 @@ class XSSDetector {
     /* @HINT: Copy out the `Image` constructor for creating image DOM elements */
     const NativeImage = window.Image || noop
 
+    /* @HINT: Extract descriptor for `srcdoc` property for `<iframe>` element */
+    let originalDesc_srcDoc = window.Object.getOwnPropertyDescriptor(window.HTMLIFrameElement.prototype, 'srcdoc')
+
+    /* @HINT: Extract setter for `src` property for `<iframe>` elements */
+    const nativeSrcAttributePropertySetter = window.Object.prototype.__lookupSetter__.call(
+      window.HTMLIFrameElement.prototype,
+      'src'
+    )
+
     /* @HINT: Extract setter for `href` property for `<a>` elements */
     const nativeHrefAttributePropertySetter = window.Object.prototype.__lookupSetter__.call(
       window.HTMLAnchorElement.prototype,
@@ -186,19 +197,86 @@ class XSSDetector {
     const nativeIDAttributeSetter = window.Object.prototype.__lookupSetter__.call(
       window.HTMLElement.prototype, 'id'
     )
+    /* @HINT: Extract descriptor for `innerHTML` property for any element */
+    let originalDesc_innerHTML = window.Object.getOwnPropertyDescriptor(window.Element.prototype, 'innerHTML')
     /* @HINT: Extract setter for `className` property for any element */
     const nativeClassNameAttributeSetter = window.Object.prototype.__lookupSetter__.call(
       window.HTMLElement.prototype, 'className'
     )
+    function setter_Srcdoc (newSrcdocMarkupValue) {
+      const self = this
+      let $newSrcdocMarkupValue = typeof newSrcdocMarkupValue === 'string' ? newSrcdocMarkupValue : ''
+      $newSrcdocMarkupValue = newSrcdocMarkupValue instanceof window.TrustedHTML ? newSrcdocMarkupValue : $newSrcdocMarkupValue
+      const $newTrustedHTMLSrcdocMarkupValue = typeof $newSrcdocMarkupValue === 'string' ? window.ZhornPuritan.createHTML($newSrcdocMarkupValue) : $newSrcdocMarkupValue
+
+      return originalDesc_srcDoc.set.call(self, $newTrustedHTMLSrcdocMarkupValue)
+    }
+    /* @HINT: Monkey patch setter for `srcdoc` property for `HTMLIFrameElement` element */
+    if (originalDesc_srcDoc) {
+      window.Object.defineProperty(window.HTMLIFrameElement.prototype, 'srcdoc', {
+        configurable: originalDesc_srcDoc.configurable,
+        enumerable: originalDesc_srcDoc.enumerable,
+        get: originalDesc_srcDoc.get,
+        set: setter_Srcdoc
+      })
+    } else {
+      originalDesc_srcDoc = {
+        set: window.Object.prototype.__lookupSetter__.call(
+          window.HTMLIFrameElement.prototype,
+          'srcdoc'
+        )
+      }
+      window.Object.prototype.__defineSetter__.call(window.HTMLIFrameElement.prototype, 'srcdoc', setter_Srcdoc)
+    }
+    /* @HINT: Monkey patch setter for `src` property for `HTMLIFrameElement` element */
+    window.Object.prototype.__defineSetter__.call(window.HTMLIFrameElement.prototype, 'src', function (newSrcValue) {
+      const self = this
+      const $newSrcValue = typeof newSrcValue === 'string' ? newSrcValue : 'about:blank'
+
+      /* @HINT: Fire a custom event `beforeinclude` to track manual whitelisting of URL endpoints */
+      const event = new window.CustomEvent('beforeinclude', {
+        detail: {
+          endpoint: $newSrcValue,
+          method: 'GET',
+          sink: 'HTMLIFrameElement.src',
+          data: null
+        },
+        bubbles: true,
+        cancelable: true
+      })
+
+      /* @HINT: Detect if the dispatched custom event was cancelled by a call to `event.preventDefault()` */
+      /* @HINT: If the event was cancelled, it means the URL endpoint above was disallowed by the checks */
+      const eventWasCancelled = !window.document.dispatchEvent(event)
+
+      if (eventWasCancelled) {
+        /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
+        throw new Error(
+          'Suspicious Activity: ' +
+         event.detail.endpoint +
+         ' included, in ' +
+          ' [ ' + event.detail.sink + ' ]'
+        )
+      }
+
+      return nativeSrcAttributePropertySetter.call(self, $newSrcValue)
+    })
     /* @HINT: Monkey patch setter for `href` property for `HTMLAnchorElement` element */
     window.Object.prototype.__defineSetter__.call(window.HTMLAnchorElement.prototype, 'href', function setter_Href (newHrefValue) {
       const self = this
       const previousHrefValue = self.href || ''
+      const $newHrefValue = typeof newHrefValue === 'string' ? newHrefValue : ''
+
+      /* @HINT: Content Interactive Delivery (CID) protocol is being used */
+      /* @CHECK: https://www.cid-protocol.org/ */
+      if ($newHrefValue.startsWith('cid:')) {
+        console.warn(`Potential attack vector; possible 'cid:' protocol misuse detected on tag href attribute with value '${$newHrefValue}'`)
+      }
 
       if (canPatchMutationEvent) {
         window.setTimeout(() => {
           /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
-          nativeHrefAttributePropertySetter.call(self, newHrefValue)
+          nativeHrefAttributePropertySetter.call(self, $newHrefValue)
         }, 0)
 
         if (newHrefValue !== previousHrefValue) {
@@ -208,8 +286,8 @@ class XSSDetector {
             true,
             false,
             self,
-            previousHrefValue || '',
-            newHrefValue || '',
+            previousHrefValue,
+            $newHrefValue,
             'href',
             (previousHrefValue === '') ? event.ADDITION : event.MODIFICATION
           )
@@ -217,18 +295,26 @@ class XSSDetector {
 	        self.dispatchEvent(event)
         }
       } else {
-        nativeHrefAttributePropertySetter.call(self, newHrefValue)
+        nativeHrefAttributePropertySetter.call(self, $newHrefValue)
       }
+
+      return $newHrefValue
     })
     /* @HINT: Monkey patch setter for `id` property for any element */
     window.Object.prototype.__defineSetter__.call(window.HTMLElement.prototype, 'id', function setter_ID (newIDValue) {
       const self = this
       const previousIDValue = self.id || ''
+      const $newIDValue = typeof newIDValue === 'string' ? newIDValue : ''
+
+      /* @HINT: Detect and intercept possible DOM-clobbering attempt */
+      if (window[$newIDValue] || document[$newIDValue]) {
+        console.warn(`Potential attack vector; possible DOM-clobbering detected on tag id attribute with value '${$newIDValue}'`)
+      }
 
       if (canPatchMutationEvent) {
         window.setTimeout(() => {
           /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
-          nativeIDAttributeSetter.call(self, newIDValue)
+          nativeIDAttributeSetter.call(self, $newIDValue)
         }, 0)
 
         if (newIDValue !== previousIDValue) {
@@ -238,8 +324,8 @@ class XSSDetector {
             true,
             false,
             self,
-            previousIDValue || '',
-            newIDValue || '',
+            previousIDValue,
+            $newIDValue,
             'id',
             (previousIDValue === '') ? event.ADDITION : event.MODIFICATION
           )
@@ -247,10 +333,12 @@ class XSSDetector {
 	        self.dispatchEvent(event)
         }
       } else {
-	      nativeIDAttributeSetter.call(self, newIDValue)
+	      nativeIDAttributeSetter.call(self, $newIDValue)
       }
-    })
 
+      return $newIDValue
+    })
+    /* @HINT:  */
     window.Object.prototype.__defineSetter__.call(window.HTMLElement.prototype, 'className', function setter_className (newClassNameValue = '') {
       const self = this
       const previousClassNameValue = self.className || null
@@ -281,6 +369,31 @@ class XSSDetector {
       }
     })
 
+    function setter_innerHTML (newInnerHTMLValue) {
+      const self = this
+      let $newInnerHTMLValue = typeof newInnerHTMLValue === 'string' ? newInnerHTMLValue : ''
+      $newInnerHTMLValue = newInnerHTMLValue instanceof window.TrustedHTML ? newInnerHTMLValue : $newInnerHTMLValue
+      const $newTrustedHTMLValue = typeof $newInnerHTMLValue === 'string' ? window.ZhornPuritan.createHTML($newInnerHTMLValue) : $newInnerHTMLValue
+
+      return originalDesc_innerHTML.set.call(self, $newTrustedHTMLValue)
+    }
+    /* @HINT: Monkey patch setter for `innerHTML` property for any element */
+    if (originalDesc_innerHTML) {
+      Object.defineProperty(window.Element.prototype, 'innerHTML', {
+        configurable: originalDesc_innerHTML.configurable,
+        enumerable: originalDesc_innerHTML.enumerable,
+        get: originalDesc_innerHTML.get,
+        set: setter_innerHTML
+      })
+    } else {
+      originalDesc_innerHTML = {
+        set: window.Object.prototype.__lookupSetter__.call(
+          window.HTMLElement.prototype, 'innerHTML'
+        )
+      }
+      window.Object.prototype.__defineSetter__.call(window.HTMLElement.prototype, 'innerHTML', setter_innerHTML)
+    }
+    /* @HINT: Override native implementation for `removeAttribute` method for any element */
     window.HTMLElement.prototype.removeAttribute = function removeAttribute (attributeName) {
       const self = this
       const previousAttributeValue = self.getAttribute(attributeName.toLowerCase())
@@ -312,27 +425,35 @@ class XSSDetector {
         nativeRemoveAttributeMethod.call(self, attributeName)
       }
     }
-
     /* @HINT: Create a new definition for `setAttribute` that instruments the API to detect suspicious URIs */
     window.HTMLElement.prototype.setAttribute = function setAttribute (attributeName, newAttributeValue) {
       const self = this
-      const previousAttributeValue = self.getAttribute(attributeName.toLowerCase())
+      const $attributeName = typeof attributeName === 'string' ? attributeName : ''
+      const previousAttributeValue = self.getAttribute($attributeName.toLowerCase())
+      const $newAttributeValue = typeof newAttributeValue === 'string' ? newAttributeValue : ''
 
       let timerID = null
 
       if (canPatchMutationEvent) {
         timerID = window.setTimeout(() => {
           /* @HINT: Stop [ DOMSubtreeModified ] event from firing before [ DOMAttrModified ] event */
-	        nativeSetAttributeMethod.call(self, attributeName.toLowerCase(), newAttributeValue)
+	        nativeSetAttributeMethod.call(self, $attributeName.toLowerCase(), $newAttributeValue)
 	      }, 0)
       }
 
+      if ($attributeName === 'id') {
+        /* @HINT: Detect and intercept possible DOM-clobbering attempt */
+        if (window[$newAttributeValue] || document[$newAttributeValue]) {
+          console.warn(`Potential attack vector; possible DOM-clobbering detected on tag id attribute with value '${$newAttributeValue}'`)
+        }
+      }
+
       /* @HINT: Whenever the attribute name is `href`, then check the URL that is the value */
-      if (attributeName === 'href' || attributeName === 'src') {
+      if ($attributeName === 'href' || $attributeName === 'src') {
         /* @HINT: Fire a custom event `beforeinclude` to track manual whitelisting of URL endpoints */
         const event = new window.CustomEvent('beforeinclude', {
           detail: {
-            endpoint: newAttributeValue,
+            endpoint: $newAttributeValue,
             method: 'GET',
             sink: 'HTMLElement.setAttribute',
             data: null
@@ -353,7 +474,6 @@ class XSSDetector {
           }
 
           /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
-
           throw new Error(
             'Suspicious Activity: ' +
            event.detail.endpoint +
@@ -364,12 +484,11 @@ class XSSDetector {
           if (
             !DOMPurify.isValidAttribute(
               self.tagName.toLowerCase(),
-              attributeName.toLowerCase(),
+              $attributeName.toLowerCase(),
               event.detail.endpoint
             )
           ) {
             /* @TODO: emit XSS detection payload to batch box for dispatch to analytics destination */
-
             throw new Error(
               'Suspicious Activity: ' +
               event.detail.endpoint +
@@ -382,7 +501,7 @@ class XSSDetector {
 
       /* @HINT: When listening to mutation events, might be okay to stagger certain event sequences properly */
       if (canPatchMutationEvent) {
-        if (newAttributeValue !== previousAttributeValue) {
+        if ($newAttributeValue !== previousAttributeValue) {
     	    const event = window.document.createEvent('MutationEvent')
 
     	    event.initMutationEvent(
@@ -390,8 +509,8 @@ class XSSDetector {
     	      true,
     	      false,
     	      self,
-    	      previousAttributeValue || '',
-    	      newAttributeValue || '',
+    	      previousAttributeValue,
+    	      $newAttributeValue,
     	      attributeName,
     	      (!previousAttributeValue) ? event.ADDITION : event.MODIFICATION
     	    )
@@ -401,7 +520,7 @@ class XSSDetector {
 	        )
         }
       } else {
-        nativeSetAttributeMethod.call(self, attributeName, newAttributeValue)
+        nativeSetAttributeMethod.call(self, $attributeName.toLowerCase(), $newAttributeValue)
       }
     }
 
@@ -1097,11 +1216,12 @@ export const module = {
       }
     }
   },
-  initializeXSSDetector: (whitelistedURLs = [], urlsCheckCallback) => {
+  initializeXSSDetector: (whitelistedURLs = [], customElements = [], urlsCheckCallback) => {
     if (xssDetector === null) {
       xssDetector = new XSSDetector(
-        whitelistedURLs,
-        urlsCheckCallback
+        Array.isArray(whitelistedURLs) ? whitelistedURLs : [],
+        Array.isArray(customElements) ? customElements : [],
+        typeof urlsCheckCallback === 'function' ? urlsCheckCallback : () => undefined
       ).initialize()
     }
     return {

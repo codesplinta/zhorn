@@ -24,7 +24,7 @@ declare const agentBeforeRequestDetails: {
     /**
 	 The DOM sink or Browser API that initiated the async request.
 	*/
-    sink: "XMLHttpRequest.send" | "HTMLImageElement.src" | "Navigator.sendBeacon" | "fetch",
+    sink: "XMLHttpRequest.send" | "HTMLImageElement.src" | "HTMLIFrameElement.src" | "Navigator.sendBeacon" | "fetch",
     /**
      The request payload
      */
@@ -88,6 +88,6 @@ declare module 'zhorn' {
        destroy: Function;
     };
     export function initializeBotDetector(botCheckTimeout?: number): ResultObject<Error>;
-    export function initializeXSSDetector(urlWhiteList: string[], urlsCheckCallback: (URISanity: import('urisanity').URISanityAPI, payload: AgentBeforeRequestDetails) => void): ResultObject<Error>;
+    export function initializeXSSDetector(urlWhiteList: string[], customElements: string[], urlsCheckCallback: (URISanity: import('urisanity').URISanityAPI, payload: AgentBeforeRequestDetails) => void): ResultObject<Error>;
     export function initializeNavigatorMetricsTracker(maxMeasureTime?: number, resourceTiming?: boolean, elementTiming?: boolean): ResultObject<import('perfume.js').Perfume>;
 }

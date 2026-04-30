@@ -23,6 +23,7 @@ import {
       "https://gatedapi.mysaasapp.com",
       "https://apis.google-analytics.com"
     ],
+    ['quiet-button', 'youtube-vimeo-embed'],
     (URISanity, payload) => {
       const { origin } = new URL(payload.endpoint);
   
@@ -56,8 +57,4 @@ import {
     /* @HINT: Preserve the BF Cache */
     /* @CHECK: https://web.dev/articles/bfcache */
     window.removeEventListener('beforeunload', onBeforeUnLoad);
-  
-    event.preventDefault();
-    event.returnValue = undefined;
-    return;
   });
